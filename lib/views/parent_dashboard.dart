@@ -7,7 +7,12 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:studycompanion_app/services/parent_service.dart';
 import 'package:studycompanion_app/models/child_model.dart';
-import 'package:studycompanion_app/views/child_details_page.dart';
+import 'package:studycompanion_app/models/announcement_model.dart';
+import 'package:studycompanion_app/services/announcement_service.dart';
+import 'package:studycompanion_app/models/message_model.dart';
+import 'package:studycompanion_app/services/message_service.dart';
+import 'package:studycompanion_app/views/chat_page.dart';
+import 'package:studycompanion_app/views/new_chat_page.dart';
 
 class ParentDashboard extends StatefulWidget {
   const ParentDashboard({super.key});
@@ -71,11 +76,14 @@ class ParentHomePage extends StatefulWidget {
 class _ParentHomePageState extends State<ParentHomePage> {
   late Future<List<ChildModel>> _childrenFuture;
   ChildModel? _selectedChild;
+  late Future<List<AnnouncementModel>> _announcementFuture;
 
   @override
   void initState() {
     super.initState();
     _childrenFuture = ParentService.getChildren();
+    _announcementFuture =
+        AnnouncementService.getPublishedAnnouncements(); // Fetch announcements
   }
 
   @override
@@ -130,49 +138,200 @@ class _ParentHomePageState extends State<ParentHomePage> {
                   ),
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 6),
 
                 /// 📚 TODAY'S FOCUS
                 const SectionTitle("Today's Focus"),
 
-                if (_selectedChild == null)
-                  const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Text("Select a child to see today's learning focus"),
-                  )
-                else ...[
-                  FocusCard(
-                    title: "📚 ${_selectedChild!.name}'s Homework",
-                    subtitle: _selectedChild!.homework,
-                  ),
-                  FocusCard(
-                    title: "📝 Upcoming Quiz",
-                    subtitle: _selectedChild!.quiz,
-                  ),
-                  FocusCard(
-                    title: "📌 Reminder",
-                    subtitle: _selectedChild!.reminder,
-                  ),
-                ],
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: _selectedChild == null
+                      ? const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Text("Select a child to see today's focus"),
+                        )
+                      : GridView.count(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: 1.6,
+                          children: [
+                            FocusCard(
+                              title: "Homework",
+                              subtitle: _selectedChild?.homework ?? "",
+                              icon: Icons.menu_book_rounded,
+                              color: const Color(0xFF4A90E2),
+                            ),
+                            FocusCard(
+                              title: "Quiz",
+                              subtitle: _selectedChild?.quiz ?? "",
+                              icon: Icons.quiz_rounded,
+                              color: const Color(0xFF9B59B6),
+                            ),
+                            FocusCard(
+                              title: "Reminder",
+                              subtitle: _selectedChild?.reminder ?? "",
+                              icon: Icons.push_pin_rounded,
+                              color: const Color(0xFFF39C12),
+                            ),
+                          ],
+                        ),
+                ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
 
                 /// 📊 PERFORMANCE
                 const SectionTitle("Performance"),
-                const DashboardCard(
-                  title: "Weekly Average",
-                  subtitle: "88%",
-                  trailing: "+2.4%",
-                ),
 
-                const SizedBox(height: 20),
+                if (_selectedChild == null)
+                  const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text("Select a child to see performance"),
+                  )
+                else
+                  Column(
+                    children: [
+                      // 🔥 SUBJECT SCORES (from DB)
+                      ..._selectedChild!.subjects.map((subj) {
+                        return ProgressCard(
+                          subject: subj.subjectName,
+                          score: subj.score,
+                        );
+                      }).toList(),
+
+                      const SizedBox(height: 12),
+
+                      // 📊 Attendance
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFE3F2FD), Colors.white],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 8,
+                                offset: Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                "Attendance",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: LinearProgressIndicator(
+                                  value: _selectedChild!.attendance / 100,
+                                  minHeight: 10,
+                                  backgroundColor: Colors.grey.shade200,
+                                  valueColor: const AlwaysStoppedAnimation(
+                                    Color(0xFF1976D2),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                "${_selectedChild!.attendance}%",
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // 📝 Teacher Remark
+                      Container(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5F3FF),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(
+                              Icons.school,
+                              color: Color(0xFF8E44AD),
+                              size: 26,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    "Teacher Remark",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Text(_selectedChild!.teacherRemark),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                const SizedBox(height: 16),
 
                 /// 📢 ANNOUNCEMENTS
                 const SectionTitle("Announcements"),
-                const DashboardCard(
-                  title: "Science Fair Update",
-                  subtitle: "Due next Friday",
-                  trailing: "",
+                FutureBuilder<List<AnnouncementModel>>(
+                  future: _announcementFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: CircularProgressIndicator(),
+                      );
+                    }
+
+                    if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                      return const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Text("No announcements available"),
+                      );
+                    }
+
+                    final announcements = snapshot.data!;
+
+                    return Column(
+                      children: announcements.map((a) {
+                        return DashboardCard(
+                          title: a.title,
+                          subtitle: a.message,
+                          trailing: "",
+                        );
+                      }).toList(),
+                    );
+                  },
                 ),
               ],
             ),
@@ -186,21 +345,82 @@ class _ParentHomePageState extends State<ParentHomePage> {
 ////////////////////////////////////////////////////////////
 /// 💬 MESSAGES PAGE
 ////////////////////////////////////////////////////////////
-
-class ParentMessagesPage extends StatelessWidget {
+class ParentMessagesPage extends StatefulWidget {
   const ParentMessagesPage({super.key});
 
   @override
+  State<ParentMessagesPage> createState() => _ParentMessagesPageState();
+}
+
+class _ParentMessagesPageState extends State<ParentMessagesPage> {
+  late Future<List<MessageModel>> _messagesFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _messagesFuture = MessageService.getMessages();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Text(
-        "Messages with Teachers",
-        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Messages"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => NewChatPage()),
+              );
+            },
+          ),
+        ],
+      ),
+
+      body: SafeArea(
+        child: FutureBuilder<List<MessageModel>>(
+          future: _messagesFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return const Center(child: Text("No messages yet"));
+            }
+
+            final messages = snapshot.data!;
+
+            return ListView.builder(
+              itemCount: messages.length,
+              itemBuilder: (context, index) {
+                final msg = messages[index];
+
+                return ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: const Color(0xFFF4E6E8),
+                    child: const Icon(Icons.school, color: Color(0xFF800020)),
+                  ),
+                  title: Text(msg.teacherName),
+                  subtitle: Text(msg.lastMessage),
+                  trailing: Text(msg.time),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => ChatPage(message: msg)),
+                    );
+                  },
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }
 }
-
 ////////////////////////////////////////////////////////////
 /// 📅 CALENDAR PAGE
 ////////////////////////////////////////////////////////////
@@ -219,9 +439,6 @@ class ParentCalendarPage extends StatelessWidget {
   }
 }
 
-////////////////////////////////////////////////////////////
-/// 👤 PROFILE PAGE
-////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////
 /// 👤 PROFILE PAGE
 ////////////////////////////////////////////////////////////
@@ -253,7 +470,7 @@ class _ParentProfilePageState extends State<ParentProfilePage> {
         // ✅ FIXED OVERFLOW HERE
         child: Column(
           children: [
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
             /// 👤 PROFILE IMAGE WITH CAMERA ICON
             Stack(
@@ -389,7 +606,8 @@ class DashboardCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -421,26 +639,52 @@ class DashboardCard extends StatelessWidget {
 class FocusCard extends StatelessWidget {
   final String title;
   final String subtitle;
+  final IconData icon;
+  final Color color;
 
-  const FocusCard({required this.title, required this.subtitle, super.key});
+  const FocusCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-            Text(subtitle),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 4),
+                Text(subtitle),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -453,10 +697,105 @@ class SectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Text(
         text,
         style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+}
+
+class ProgressCard extends StatelessWidget {
+  final String subject;
+  final int score;
+
+  const ProgressCard({required this.subject, required this.score, super.key});
+
+  Color get _mainMaroon => const Color(0xFF800020); // primary
+  Color get _lightMaroon => const Color(0xFFB76E79); // soft badge
+  Color get _veryLightMaroon => const Color(0xFFF4E6E8); // card tint
+  Color get _color {
+    if (score >= 85) {
+      return _mainMaroon; // Strong performance
+    } else if (score >= 70) {
+      return _lightMaroon; // Medium
+    } else {
+      return _veryLightMaroon; // Needs improvement
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [_veryLightMaroon, Colors.white],
+
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 10,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            /// Subject + score row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  subject,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _color.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    "$score%",
+                    style: TextStyle(
+                      color: _color,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 12),
+
+            /// Progress bar
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: LinearProgressIndicator(
+                value: score / 100,
+                minHeight: 10,
+                backgroundColor: Colors.grey.shade200,
+                valueColor: const AlwaysStoppedAnimation(Color(0xFF800020)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

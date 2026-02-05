@@ -150,6 +150,27 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "Welcome Back\nCikgu Farah",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Icon(Icons.notifications, color: Colors.white),
+                    ],
+                  ),
+                  SizedBox(height: 10),
+                  Text("Dashboard", style: TextStyle(color: Colors.white70)),
+                ],
+              ),
+            ),
                 children: [
                   const SizedBox(height: 12),
 

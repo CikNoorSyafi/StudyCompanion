@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'package:studycompanion_app/viewmodels/login_viewmodel.dart';
 import 'package:studycompanion_app/views/parent_dashboard.dart';
+import 'package:studycompanion_app/services/notification_service.dart';
 import 'package:studycompanion_app/services/teacher_store.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  // Initialize Firebase Messaging for notifications
+  await NotificationService.initializeMessaging();
   runApp(const MyApp());
 }
 

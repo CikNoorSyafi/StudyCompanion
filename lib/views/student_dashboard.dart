@@ -1,4 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:studycompanion_app/viewmodels/student_dashboard_viewmodel.dart';
+import 'package:studycompanion_app/viewmodels/announcement_viewmodel.dart';
+import 'package:studycompanion_app/viewmodels/notification_viewmodel.dart';
+import 'package:studycompanion_app/views/announcements_page.dart';
+import 'package:studycompanion_app/views/notifications_page.dart';
 
 class StudentDashboard extends StatelessWidget {
   const StudentDashboard({super.key});
@@ -7,6 +13,13 @@ class StudentDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => StudentDashboardViewModel(),
+      child: _buildScaffold(),
+    );
+  }
+
+  Widget _buildScaffold() {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
 
@@ -22,7 +35,7 @@ class StudentDashboard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Hi, Alex",
+                  "Hi, Amir",
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -37,78 +50,308 @@ class StudentDashboard extends StatelessWidget {
             ),
           ],
         ),
-        actions: const [
+        actions: [
           Padding(
-            padding: EdgeInsets.only(right: 16),
-            child: Icon(Icons.notifications, color: primary),
+            padding: const EdgeInsets.only(right: 16),
+            child: ChangeNotifierProvider(
+              create: (_) => NotificationViewModel(),
+              child: Consumer<NotificationViewModel>(
+                builder: (context, notifyViewModel, _) {
+                  return Stack(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.notifications, color: primary),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ChangeNotifierProvider(
+                                create: (_) => NotificationViewModel(),
+                                child: const NotificationsPage(),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      if (notifyViewModel.unreadCount > 0)
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              notifyViewModel.unreadCount.toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ),
           ),
         ],
       ),
 
       body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // 📊 PROGRESS CARD
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF800000), Color(0xFF5C0000)],
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      "Overall Academic Progress",
-                      style: TextStyle(color: Colors.white70),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      "75%",
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+        child: Consumer<StudentDashboardViewModel>(
+          builder: (context, viewModel, _) {
+            return Column(
+              children: [
+                // 📊 PROGRESS CARD
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF800000), Color(0xFF5C0000)],
                       ),
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                    SizedBox(height: 10),
-                    LinearProgressIndicator(
-                      value: 0.75,
-                      backgroundColor: Colors.white24,
-                      color: Colors.white,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "Overall Academic Progress",
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          "${viewModel.progressPercentage}%",
+                          style: const TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        LinearProgressIndicator(
+                          value: viewModel.overallProgress,
+                          backgroundColor: Colors.white24,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          "${viewModel.completedTasksCount} of ${viewModel.totalTasksCount} tasks completed",
+                          style: const TextStyle(color: Colors.white70, fontSize: 12),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
 
-            // ⏰ REMINDERS
-            sectionTitle("Upcoming Reminders"),
-            SizedBox(
-              height: 140,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                children: const [
-                  ReminderCard("Physics Quiz", "Tomorrow, 10AM"),
-                  ReminderCard("Science Club", "Wed, 3PM"),
-                  ReminderCard("Return Books", "Fri, 5PM"),
-                ],
-              ),
-            ),
+                // ⏰ REMINDERS
+                sectionTitle("Upcoming Reminders"),
+                SizedBox(
+                  height: 140,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    children: const [
+                      ReminderCard("Physics Quiz", "Tomorrow, 10AM"),
+                      ReminderCard("Science Club", "Wed, 3PM"),
+                      ReminderCard("Return Books", "Fri, 5PM"),
+                    ],
+                  ),
+                ),
 
-            // 📚 TASKS
-            sectionTitle("Assigned Tasks"),
-            const TaskTile("Algebra Worksheet", "Due Today"),
-            const TaskTile("Chapter 4 Reading", "Due Tomorrow"),
-            const TaskTile("Lab Report Draft", "Due Friday"),
-            const TaskTile("History Essay Outline", "Next Week"),
-            const SizedBox(height: 80),
-          ],
+                // � ANNOUNCEMENTS
+                sectionTitle("Latest Announcements"),
+                ChangeNotifierProvider(
+                  create: (_) => AnnouncementViewModel(),
+                  child: Consumer<AnnouncementViewModel>(
+                    builder: (context, announcementViewModel, _) {
+                      final announcements = announcementViewModel.recentAnnouncements;
+                      if (announcements.isEmpty) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            'No announcements yet',
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                        );
+                      }
+                      return Column(
+                        children: [
+                          ...announcements.take(2).map((announcement) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue[50],
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border(
+                                    left: BorderSide(
+                                      color: Colors.blue[800]!,
+                                      width: 4,
+                                    ),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      announcement.title,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      announcement.message,
+                                      style: const TextStyle(fontSize: 12),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            child: ElevatedButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ChangeNotifierProvider(
+                                      create: (_) => AnnouncementViewModel(),
+                                      child: const AnnouncementsPage(),
+                                    ),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue[800],
+                                minimumSize: const Size(double.infinity, 40),
+                              ),
+                              child: const Text('View All Announcements'),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+                // 🔔 NOTIFICATIONS
+                sectionTitle("Recent Notifications"),
+                ChangeNotifierProvider(
+                  create: (_) => NotificationViewModel(),
+                  child: Consumer<NotificationViewModel>(
+                    builder: (context, notifyViewModel, _) {
+                      final notifications = notifyViewModel.recentNotifications;
+                      if (notifications.isEmpty) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            'No notifications yet',
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                        );
+                      }
+                      return Column(
+                        children: [
+                          ...notifications.take(3).map((notification) {
+                            final iconData = _getNotificationIcon(notification.notificationType);
+                            final color = _getNotificationColor(notification.notificationType);
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: notification.isRead ? Colors.grey[100] : Colors.amber[50],
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: color.withOpacity(0.3),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: color.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Icon(iconData, color: color, size: 18),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            notification.title,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 13,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            notification.body,
+                                            style: const TextStyle(fontSize: 11),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            child: ElevatedButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ChangeNotifierProvider(
+                                      create: (_) => NotificationViewModel(),
+                                      child: const NotificationsPage(),
+                                    ),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.amber[800],
+                                minimumSize: const Size(double.infinity, 40),
+                              ),
+                              child: const Text('View All Notifications'),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+                // �📚 TASKS
+                sectionTitle("Assigned Tasks"),
+                ...viewModel.tasks.map((task) => TaskTile(task: task)),
+                const SizedBox(height: 80),
+              ],
+            );
+          },
         ),
       ),
 
@@ -182,20 +425,73 @@ class ReminderCard extends StatelessWidget {
 
 // 🔹 Task Tile
 class TaskTile extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  const TaskTile(this.title, this.subtitle, {super.key});
+  final dynamic task;
+  
+  const TaskTile({required this.task, super.key});
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: const CircleAvatar(
-        backgroundColor: Colors.grey,
-        child: Icon(Icons.book, color: Colors.white),
-      ),
-      title: Text(title),
-      subtitle: Text(subtitle),
-      trailing: const Icon(Icons.check_box_outline_blank),
+    return Consumer<StudentDashboardViewModel>(
+      builder: (context, viewModel, _) {
+        return ListTile(
+          leading: CircleAvatar(
+            backgroundColor: task.isCompleted ? Colors.green : Colors.grey,
+            child: Icon(
+              task.isCompleted ? Icons.check : Icons.book,
+              color: Colors.white,
+            ),
+          ),
+          title: Text(
+            task.title,
+            style: TextStyle(
+              decoration: task.isCompleted ? TextDecoration.lineThrough : null,
+              color: task.isCompleted ? Colors.grey : Colors.black,
+            ),
+          ),
+          subtitle: Text(task.dueDate),
+          trailing: GestureDetector(
+            onTap: () => viewModel.toggleTaskCompletion(task.id),
+            child: Icon(
+              task.isCompleted
+                  ? Icons.check_box
+                  : Icons.check_box_outline_blank,
+              color: task.isCompleted
+                  ? StudentDashboard.primary
+                  : Colors.grey,
+            ),
+          ),
+        );
+      },
     );
+  }
+}
+// 🔹 Helper Methods for Notifications
+IconData _getNotificationIcon(String type) {
+  switch (type) {
+    case 'task':
+      return Icons.assignment;
+    case 'achievement':
+      return Icons.emoji_events;
+    case 'announcement':
+      return Icons.notifications_active;
+    case 'alert':
+      return Icons.info;
+    default:
+      return Icons.notifications;
+  }
+}
+
+Color _getNotificationColor(String type) {
+  switch (type) {
+    case 'task':
+      return Colors.orange;
+    case 'achievement':
+      return Colors.green;
+    case 'announcement':
+      return Colors.blue;
+    case 'alert':
+      return Colors.red;
+    default:
+      return Colors.grey;
   }
 }

@@ -80,8 +80,8 @@ class AdminDashboard extends StatelessWidget {
 
             // 📜 RECENT ACTIVITY
             sectionTitle("Recent Activity"),
-            const ActivityTile("John Doe", "Uploaded Mathematics Syllabus"),
-            const ActivityTile("Sarah Smith", "Requested password reset"),
+            const ActivityTile("Mohd Rizwan", "Uploaded Mathematics Syllabus"),
+            const ActivityTile("Siti Nurhaliza", "Requested password reset"),
             const ActivityTile("System", "New student registration"),
 
             const SizedBox(height: 80),

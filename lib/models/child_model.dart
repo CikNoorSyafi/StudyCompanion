@@ -30,4 +30,16 @@ class ChildModel {
       reminder: json['reminder'] ?? "No reminder",
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'grade': grade,
+      'gpa': gpa,
+      'homework': homework,
+      'quiz': quiz,
+      'reminder': reminder,
+    };
+  }
 }

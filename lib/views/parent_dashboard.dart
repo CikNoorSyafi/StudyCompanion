@@ -7,7 +7,6 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:studycompanion_app/services/parent_service.dart';
 import 'package:studycompanion_app/models/child_model.dart';
-import 'package:studycompanion_app/views/child_details_page.dart';
 
 class ParentDashboard extends StatefulWidget {
   const ParentDashboard({super.key});

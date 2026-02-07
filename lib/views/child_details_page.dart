@@ -23,7 +23,9 @@ class ChildDetailsPage extends StatelessWidget {
               child: ListTile(
                 leading: const Icon(Icons.school),
                 title: Text(child.name),
-                subtitle: Text("${child.grade} • GPA ${child.gpa}"),
+                subtitle: Text(
+                  "${child.grade} • overallAverage ${child.overallAverage}",
+                ),
               ),
             ),
 

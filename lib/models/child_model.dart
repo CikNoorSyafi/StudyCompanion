@@ -4,7 +4,7 @@ class ChildModel {
   final String id;
   final String name;
   final String grade;
-  final double gpa;
+  final double overallAverage;
 
   final String homework;
   final String quiz;
@@ -18,7 +18,7 @@ class ChildModel {
     required this.id,
     required this.name,
     required this.grade,
-    required this.gpa,
+    required this.overallAverage,
     required this.homework,
     required this.quiz,
     required this.reminder,
@@ -32,7 +32,7 @@ class ChildModel {
       id: json['id'] ?? "",
       name: json['name'] ?? "",
       grade: json['grade'] ?? "",
-      gpa: (json['gpa'] ?? 0).toDouble(),
+      overallAverage: (json['overallAverage'] ?? 0).toDouble(),
       homework: json['homework'] ?? "",
       quiz: json['quiz'] ?? "",
       reminder: json['reminder'] ?? "",

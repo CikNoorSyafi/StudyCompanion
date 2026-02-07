@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class AnnouncementModel {
   final String id;
   final String title;
@@ -15,14 +17,16 @@ class AnnouncementModel {
     required this.isPublished,
   });
 
-  factory AnnouncementModel.fromJson(Map<String, dynamic> json) {
+  factory AnnouncementModel.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+
     return AnnouncementModel(
-      id: json['id'] ?? '',
-      title: json['title'] ?? '',
-      message: json['message'] ?? '',
-      createdBy: json['createdBy'] ?? '',
-      date: DateTime.parse(json['date']),
-      isPublished: json['isPublished'] ?? false,
+      id: doc.id,
+      title: data['title'] ?? '',
+      message: data['message'] ?? '',
+      createdBy: data['createdBy'] ?? '',
+      date: (data['createdAt'] as Timestamp).toDate(),
+      isPublished: data['isPublished'] ?? false,
     );
   }
 }

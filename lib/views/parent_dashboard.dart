@@ -13,6 +13,14 @@ import 'package:studycompanion_app/models/message_model.dart';
 import 'package:studycompanion_app/services/message_service.dart';
 import 'package:studycompanion_app/views/chat_page.dart';
 import 'package:studycompanion_app/views/new_chat_page.dart';
+import 'package:studycompanion_app/services/calendar_service.dart';
+import 'package:studycompanion_app/models/event_model.dart';
+import 'package:studycompanion_app/services/study_task_service.dart';
+import 'package:studycompanion_app/models/study_task_model.dart';
+import 'package:studycompanion_app/services/calendar_service.dart';
+import 'package:studycompanion_app/views/add_study_task_page.dart';
+import 'package:studycompanion_app/views/chat_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ParentDashboard extends StatefulWidget {
   const ParentDashboard({super.key});
@@ -81,7 +89,12 @@ class _ParentHomePageState extends State<ParentHomePage> {
   @override
   void initState() {
     super.initState();
-    _childrenFuture = ParentService.getChildren();
+    _childrenFuture = ParentService.getChildren().then((children) {
+      if (children.isNotEmpty) {
+        _selectedChild = children.first;
+      }
+      return children;
+    });
     _announcementFuture =
         AnnouncementService.getPublishedAnnouncements(); // Fetch announcements
   }
@@ -101,7 +114,62 @@ class _ParentHomePageState extends State<ParentHomePage> {
           }
 
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text("No children found"));
+            final TextEditingController _codeController =
+                TextEditingController();
+
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      "No children linked yet",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    TextField(
+                      controller: _codeController,
+                      decoration: const InputDecoration(
+                        labelText: "Enter Linking Code",
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    ElevatedButton(
+                      onPressed: () async {
+                        final result = await ParentService.linkChild(
+                          _codeController.text.trim(),
+                        );
+
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text(result)));
+
+                        if (result == "Child linked successfully") {
+                          final children = await ParentService.getChildren();
+
+                          setState(() {
+                            _childrenFuture = Future.value(children);
+                            if (children.isNotEmpty) {
+                              _selectedChild = children.first;
+                            }
+                          });
+                        }
+                      },
+
+                      child: const Text("Link Child"),
+                    ),
+                  ],
+                ),
+              ),
+            );
           }
 
           final children = snapshot.data!;
@@ -133,7 +201,8 @@ class _ParentHomePageState extends State<ParentHomePage> {
                     child: DashboardCard(
                       title: child.name,
                       subtitle: child.grade,
-                      trailing: "GPA ${child.gpa}",
+                      trailing:
+                          "Average ${child.overallAverage.toStringAsFixed(1)}%",
                     ),
                   ),
                 ),
@@ -345,95 +414,157 @@ class _ParentHomePageState extends State<ParentHomePage> {
 ////////////////////////////////////////////////////////////
 /// 💬 MESSAGES PAGE
 ////////////////////////////////////////////////////////////
-class ParentMessagesPage extends StatefulWidget {
+
+class ParentMessagesPage extends StatelessWidget {
   const ParentMessagesPage({super.key});
-
-  @override
-  State<ParentMessagesPage> createState() => _ParentMessagesPageState();
-}
-
-class _ParentMessagesPageState extends State<ParentMessagesPage> {
-  late Future<List<MessageModel>> _messagesFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _messagesFuture = MessageService.getMessages();
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Messages"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => NewChatPage()),
+      appBar: AppBar(title: const Text("Messages")),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: MessageService.getParentChats(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final chats = snapshot.data!.docs;
+
+          if (chats.isEmpty) {
+            return const Center(child: Text("No messages yet"));
+          }
+
+          return ListView.builder(
+            itemCount: chats.length,
+            itemBuilder: (context, index) {
+              final data = chats[index].data() as Map<String, dynamic>;
+
+              return ListTile(
+                leading: const CircleAvatar(child: Icon(Icons.school)),
+                title: Text(data['teacherName'] ?? ''),
+                subtitle: Text(data['lastMessage'] ?? ''),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ChatPage(chatId: chats[index].id),
+                    ),
+                  );
+                },
               );
             },
-          ),
-        ],
-      ),
-
-      body: SafeArea(
-        child: FutureBuilder<List<MessageModel>>(
-          future: _messagesFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            if (!snapshot.hasData || snapshot.data!.isEmpty) {
-              return const Center(child: Text("No messages yet"));
-            }
-
-            final messages = snapshot.data!;
-
-            return ListView.builder(
-              itemCount: messages.length,
-              itemBuilder: (context, index) {
-                final msg = messages[index];
-
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: const Color(0xFFF4E6E8),
-                    child: const Icon(Icons.school, color: Color(0xFF800020)),
-                  ),
-                  title: Text(msg.teacherName),
-                  subtitle: Text(msg.lastMessage),
-                  trailing: Text(msg.time),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => ChatPage(message: msg)),
-                    );
-                  },
-                );
-              },
-            );
-          },
-        ),
+          );
+        },
       ),
     );
   }
 }
+
 ////////////////////////////////////////////////////////////
 /// 📅 CALENDAR PAGE
 ////////////////////////////////////////////////////////////
-
-class ParentCalendarPage extends StatelessWidget {
+class ParentCalendarPage extends StatefulWidget {
   const ParentCalendarPage({super.key});
 
   @override
+  State<ParentCalendarPage> createState() => _ParentCalendarPageState();
+}
+
+class _ParentCalendarPageState extends State<ParentCalendarPage> {
+  DateTime selectedDate = DateTime.now();
+
+  @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Text(
-        "School Calendar",
-        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+    final schoolEvents = CalendarService.events
+        .where(
+          (e) =>
+              e.date.year == selectedDate.year &&
+              e.date.month == selectedDate.month &&
+              e.date.day == selectedDate.day,
+        )
+        .toList();
+
+    final studyTasks = StudyTaskService.getTasksByDate(selectedDate);
+
+    return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFF800020),
+        child: const Icon(Icons.add),
+        onPressed: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => AddStudyTaskPage(date: selectedDate),
+            ),
+          );
+          setState(() {});
+        },
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            const SizedBox(height: 10),
+
+            /// 📆 Simple Date Picker
+            CalendarDatePicker(
+              initialDate: selectedDate,
+              firstDate: DateTime(2025),
+              lastDate: DateTime(2030),
+              onDateChanged: (d) => setState(() => selectedDate = d),
+            ),
+
+            const SizedBox(height: 10),
+
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  /// SCHOOL EVENTS (READ ONLY)
+                  const Text(
+                    "School Events",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  ...schoolEvents.map(
+                    (e) => ListTile(
+                      title: Text(e.title),
+                      subtitle: Text(e.description),
+                      leading: const Icon(Icons.school),
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  /// STUDY PLANNER (PARENT CRUD)
+                  const Text(
+                    "Study Planner",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  ...studyTasks.map(
+                    (task) => CheckboxListTile(
+                      title: Text("${task.subject} — ${task.topic}"),
+                      subtitle: Text("${task.durationMinutes} mins"),
+                      value: task.completed,
+                      onChanged: (_) {
+                        setState(() {
+                          StudyTaskService.toggleComplete(task.id);
+                        });
+                      },
+                      secondary: IconButton(
+                        icon: const Icon(Icons.delete),
+                        onPressed: () {
+                          setState(() {
+                            StudyTaskService.deleteTask(task.id);
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

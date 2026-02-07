@@ -4,6 +4,8 @@ import 'package:studycompanion_app/views/teacher_dashboard.dart';
 import 'package:studycompanion_app/views/parent_dashboard.dart';
 import 'package:studycompanion_app/views/admin_dashboard.dart';
 import 'package:studycompanion_app/core/user_session.dart';
+import 'package:studycompanion_app/views/register_page.dart';
+import 'package:studycompanion_app/services/auth_service.dart';
 
 /// A self-contained login screen widget that mirrors the provided HTML layout.
 /// Place this file in `lib/viewmodels/login_viewmodel.dart` and use
@@ -213,7 +215,7 @@ class _LoginViewModelState extends State<LoginViewModel> {
                                   bottom: 6,
                                 ),
                                 child: Text(
-                                  'Email or Username',
+                                  'Email',
                                   style: TextStyle(
                                     fontSize: 13,
                                     color: isDark
@@ -231,7 +233,7 @@ class _LoginViewModelState extends State<LoginViewModel> {
                                   Icons.person_outline,
                                   color: Colors.grey,
                                 ),
-                                hintText: 'Enter your email or ID',
+                                hintText: 'Enter your email',
                                 filled: true,
                                 fillColor: isDark
                                     ? Colors.white10
@@ -350,51 +352,48 @@ class _LoginViewModelState extends State<LoginViewModel> {
                                   ),
                                   elevation: 8,
                                 ),
-                                onPressed: () {
-                                  // Replace with your sign-in logic
-                                  final selectedRole =
-                                      _roles[_selectedRoleIndex];
-                                  // ✅ STORE USER GLOBALLY (ADD HERE)
-                                  UserSession.name =
-                                      _emailController.text; // temp name
-                                  UserSession.email = _emailController.text;
-                                  UserSession.role = selectedRole;
+                                onPressed: () async {
+                                  final email = _emailController.text;
+                                  final password = _passwordController.text;
 
-                                  Widget destinationScreen;
-
-                                  switch (selectedRole) {
-                                    case 'Student':
-                                      destinationScreen =
-                                          const StudentDashboard();
-                                      break;
-
-                                    case 'Teacher':
-                                      destinationScreen =
-                                          const TeacherDashboard();
-                                      break;
-
-                                    case 'Parent':
-                                      destinationScreen =
-                                          const ParentDashboard();
-                                      break;
-
-                                    case 'Admin':
-                                      destinationScreen =
-                                          const AdminDashboard();
-                                      break;
-
-                                    default:
-                                      destinationScreen =
-                                          const StudentDashboard();
-                                  }
-
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => destinationScreen,
-                                    ),
+                                  final result = await AuthService.login(
+                                    email,
+                                    password,
                                   );
+
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(result)),
+                                  );
+
+                                  if (result == "Login successful") {
+                                    final data =
+                                        await AuthService.getUserData();
+
+                                    if (data == null) return;
+
+                                    final role = data["role"];
+
+                                    Widget destination;
+
+                                    if (role == "parent") {
+                                      destination = const ParentDashboard();
+                                    } else if (role == "teacher") {
+                                      destination = const TeacherDashboard();
+                                    } else if (role == "student") {
+                                      destination = const StudentDashboard();
+                                    } else {
+                                      destination = const AdminDashboard();
+                                    }
+
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => destination,
+                                      ),
+                                    );
+                                  }
                                 },
+
                                 child: const Text(
                                   'Sign In',
                                   style: TextStyle(
@@ -426,7 +425,12 @@ class _LoginViewModelState extends State<LoginViewModel> {
                     ),
                   ),
                   TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const RegisterPage()),
+                      );
+                    },
                     child: Text(
                       'Sign up',
                       style: TextStyle(

@@ -54,3 +54,48 @@ AsalBoleh - StudyCompanion+ is a mobile application developed to improve communi
  - iOS: run `pod install` in `ios/` after changing pods: `cd ios && pod install`.
  - Regenerate `firebase_options.dart` when platforms or Firebase config change.
 
+## Firestore collections (recommended)
+
+The app expects these top-level collections (adjust names as needed):
+
+- `users`
+	- Fields: `displayName` (string), `role` (string: `teacher|parent|admin`), `email` (string), `createdAt` (timestamp)
+- `children`
+	- Fields: `parentId` (reference to `/users/{uid}`), `name`, `dob` (timestamp), `class`, `createdAt`
+- `announcements`
+	- Fields: `authorId`, `title`, `body`, `targetClass` (string), `createdAt`
+- `chats/{chatId}/messages` (subcollection)
+	- Message document fields: `senderId`, `text`, `timestamp`
+- `events`
+	- Fields: `title`, `description`, `startAt` (timestamp), `endAt` (timestamp), `createdBy`
+- `study_tasks`
+	- Fields: `childId`, `title`, `dueDate` (timestamp), `completed` (bool), `notes`
+
+Indexes (examples)
+- `messages`: composite index `(chatId ASC, timestamp DESC)` for listing recent messages.
+- `study_tasks`: index on `(childId, dueDate)` for per-child queries by due date.
+
+Security rules (example — tailor to your roles)
+```rules
+rules_version = '2';
+service cloud.firestore {
+	match /databases/{database}/documents {
+		match /users/{userId} {
+			allow read: if request.auth != null;
+			allow write: if request.auth != null && request.auth.uid == userId;
+		}
+		match /chats/{chatId}/messages/{msgId} {
+			allow create: if request.auth != null;
+			allow read: if request.auth != null;
+			allow delete, update: if request.auth != null && resource.data.senderId == request.auth.uid;
+		}
+		// add rules for announcements, events, study_tasks based on user role
+	}
+}
+```
+
+Seeding / dev setup
+- Use the Firebase Console to add example documents or run the Firestore Emulator and seed with a small script.
+- To develop locally without production data, run the emulator and import JSON fixtures.
+
+
